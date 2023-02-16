@@ -1,0 +1,6 @@
+{
+    "require": {
+        "guzzle/http": "^3.9",
+        "ufee/amoapi": "0.9.3.2"
+    }
+}
