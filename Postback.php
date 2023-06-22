@@ -11,7 +11,6 @@ class Postback
      */
     private Client $client;
 
-//    private static string $defaultUrlAds = 'https://webhook.site/1c780d37-9f6f-4371-8552-cd43e583ccb9';
     private static string $defaultUrlAds = 'https://salid.ru/postback/ads.php';
 
     public ?string $utm_medium = 'offer1234';

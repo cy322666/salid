@@ -8,11 +8,13 @@ try {
     require_once 'vendor/autoload.php';
     require_once 'Postback.php';
 
+    file_put_contents('log-salid.log', date('Y-m-d H:i:s').' => '.json_encode($_POST)."\n", FILE_APPEND);
+
     if ($_GET['env'] == 'test') {
 
         $leadId = $_GET['lead_id'];
     } else
-        $leadId = $_POST['update'][0]['id'] ?? $_POST['add'][0]['id'];
+        $leadId = $_POST['status'][0]['id'] ?? $_POST['add'][0]['id'];
 
     $client_id = '154bbcc6-c232-44ba-a705-1bd375dba1d1';
     $client_secret = 'yovyYOLEhC5CuUbKoqU1ZLAoj7dpEG3zJzt1pt6sZ28C8ibk5OGKrs6jbeOMCFj2';
@@ -27,7 +29,28 @@ try {
     $amoApi = Oauthapi::getInstance($client_id);
 
     $lead = $amoApi->leads()->find($leadId);
-//echo '<pre>'; print_r($lead->toArray()); echo '</pre>'; exit;
+
+    if (!empty($lead->toArray()['custom_fields']['630237'])) {
+
+        $source = $lead->toArray()['custom_fields']['630237']->values[0]->value;
+//        echo '<pre>';print_r($source);echo '</pre>'; exit;
+    } else {
+        file_put_contents('log-salid.log', date('Y-m-d H:i:s').' => НЕТ SOURCE : '."\n", FILE_APPEND);
+
+        exit;
+    }
+
+    $lead = $amoApi->leads()->find($leadId);
+
+    file_put_contents('log-salid.log', date('Y-m-d H:i:s').' => SOURCE : '.$source.' PIPELINE : '.$lead->pipeline_id."\n", FILE_APPEND);
+
+    if ($source !== 'salid' || $lead->pipeline_id !== 1679545) {
+
+        file_put_contents('log-salid.log', date('Y-m-d H:i:s').' => НЕ НУЖНЫЙ lead : '.$leadId."\n", FILE_APPEND);
+
+        exit;
+    }
+
     $postback = new Postback();
     $postback->summa_zakaza = $lead->sale;
     $postback->id_polzovatelya = $lead->main_contact_id;
@@ -36,24 +59,31 @@ try {
 
     $referrer = $lead->cf('REFERER')->getValue();
 
-    if ($referrer)
+    if ($referrer) {
+
         $postback->utm_term = explode('fbclid=', $referrer)[1];
+
+        if ($postback->utm_term == '') {
+
+            $postback->utm_term = explode('utm_term=', $referrer)[1];
+        }
+    }
 
     switch ($lead->status_id) {
 
-        case 54758302 :
+        case 143 :
             $response = $postback->refused();
             break;
 
-        case 28582030 :
+        case 142 :
             $response = $postback->payed();
             break;
 
-        case 25242892 :
+        case 25242892:
             $response = $postback->registration();
             break;
 
-        case 143 :
+        case 28582030:
             $response = $postback->order();
             break;
 
@@ -61,12 +91,12 @@ try {
             exit;
     }
 
-//    $msg = $response->getBody()->getContents();
-
-    file_put_contents('log.log', date('Y-m-d H:i:s').' => lead : '.$leadId.' > '.json_encode($postback->toArray())."\n", FILE_APPEND);
+    file_put_contents('log-salid.log', date('Y-m-d H:i:s').' => lead : '.$leadId.' > '.json_encode($postback->toArray())."\n", FILE_APPEND);
 
 } catch (Exception $exception) {
 } catch (GuzzleException $exception) {
+
+//    echo '<pre>'; print_r($exception->getMessage()); echo '</pre>'; exit;
 
     file_put_contents('log-error.log', date('Y-m-d H:i:s').' => '.$exception->getFile().' '.$exception->getLine().' : '.$exception->getMessage(), FILE_APPEND);
 }
